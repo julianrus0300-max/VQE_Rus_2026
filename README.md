@@ -11,7 +11,10 @@ python login.py - login to your Quantinuum account
 deactivate - close environment
 source .venv/bin/activate - manually get into environment
 pip list - check the modules installed
-If you ever need to install any new import, replace inquanto-nexus and do: 
+If you ever need to install any new import, replace inquanto-nexus
+
+## APIKEY
+The user should find their API in InQuanto browser
 
 ## Getting Started
 1. Select new terminal from the drop down
