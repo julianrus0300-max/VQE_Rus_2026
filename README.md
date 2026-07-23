@@ -1,3 +1,6 @@
+If using any of the code, it's highly recommended to only use the Main code files as they're not prototypes.
+Only use the prototypes as possible examples, since some of them may not work.
+
 ## Fresh Set-up Installation Instructions (Run in order in terminal)
 1. python3.11 -m venv .venv
     - set up virtual environment
@@ -24,5 +27,3 @@ The user should find their API in InQuanto browser
 4. Confirm your imports with pip list
     - If you don't see inquanto, qulacs, etc. then you'll need to pip install the requirements.txt file with command in dresh set-up
 5. Create a new python file and run calculations.
-
-TEST
