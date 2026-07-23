@@ -1,0 +1,5 @@
+qnexus
+jupyter
+inquanto[ibm,quantinuum,jupyter,qulacs,projectq] --index-url=https://dl.cloudsmith.io/SkInhKAV92sMAuDe/quantinuum/customer/python/simple/
+inquanto-pyscf --index-url=https://dl.cloudsmith.io/SkInhKAV92sMAuDe/quantinuum/customer/python/simple/
+inquanto-nglview --index-url=https://dl.cloudsmith.io/SkInhKAV92sMAuDe/quantinuum/customer/python/simple/

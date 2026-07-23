@@ -1,0 +1,33 @@
+import qnexus as qnx
+from qnexus.client import devices
+from inquanto.ansatz import UCC
+from inquanto.operators import QubitOperator
+from inquanto.protocols import ProtocolStateVectorSparse  # <-- The culprit
+from inquanto.algorithms import AlgorithmVQE
+from inquanto.minimizers import MinimizerScipy
+
+# 1. Define a basic operator and ansatz (e.g., for a simple 2-qubit system)
+hamiltonian = QubitOperator.from_string("-1.0 Z0 + 0.5 X0 Y1")
+ansatz = UCC(n_electrons=2, n_orbitals=2)
+
+# 2. Set up the H2-1E hardware emulator via Quantinuum Nexus
+# Note: Submission to H2-1E requires valid credentials and consumes HQCs
+qnx.context.set_active_project("InQuanto Documentation Project")
+config = qnx.QuantinuumConfig(device_name="H2-1E")
+h2_1e_backend = qnx.get_backend(config)
+
+# 3. Instantiate the incompatible statevector protocol
+# We are forcing a Statevector Protocol to read from a shot-sampling backend
+bad_protocol = ProtocolStateVectorSparse(backend=h2_1e_backend)
+
+# 4. Attempt to build the algorithm
+# This step will THROW AN ERROR because H2-1E cannot compute statevectors
+vqe = AlgorithmVQE(
+    objective_expression=hamiltonian,
+    ansatz=ansatz,
+    minimizer=MinimizerScipy(),
+    initial_parameters=ansatz.generate_initial_parameters()
+)
+
+# CRASH POINT: The build function checks if the backend can fulfill the protocol
+vqe_built = vqe.build(backend=h2_1e_backend, protocol_expression=bad_protocol)

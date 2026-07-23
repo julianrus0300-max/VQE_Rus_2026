@@ -1,0 +1,117 @@
+# ########################
+# MOLECULE SPECIFICATION #
+# ########################
+#import sys
+#print(sys.executable)
+
+import numpy
+#from inquanto.protocols import SparseStatevectorProtocol
+geometry = [["H", [0,0,0]], ["H", [0,0,0.7414]]]
+#geometry = [["H", [0,0,0]]]
+freeze = []
+#freeze = [2,3]
+multiplicity = 1
+basis = "6-31g"
+charge = 0
+verbose = 1
+
+# ######################### #
+# PRELIMINARY CALCULATIONS  #
+# ######################### #
+from inquanto.extensions.pyscf import ChemistryDriverPySCFMolecularROHF
+
+
+driver = ChemistryDriverPySCFMolecularROHF(geometry=geometry, basis=basis, charge=charge, verbose=verbose, frozen=freeze, multiplicity=multiplicity)
+
+chemistry_hamiltonian, fock_space, hartree_fock_state = driver.get_system()
+hartree_fock_energy = driver.mf_energy
+print(driver.mf_energy)
+print(len(driver._mf.mo_energy))
+
+#print('HARTREE FOCK ENERGY: {}\n'.format(hartree_fock_energy))
+
+fermionic_hamiltonian = chemistry_hamiltonian.to_FermionOperator()
+
+# ######################### #
+# QUBIT MAPPING HAMILTONIAN #
+# ######################### #
+
+from inquanto.mappings import QubitMappingJordanWigner
+
+jw_map = QubitMappingJordanWigner()
+qubit_hamiltonian = jw_map.operator_map(fermionic_hamiltonian)
+#print('QUBIT HAMILTONIAN:\n{}'.format(qubit_hamiltonian))
+
+
+# ##################### #
+# CREATE A UCCSD ANSATZ #
+# ##################### #
+
+from inquanto.ansatzes import FermionSpaceAnsatzUCCSD
+from pytket import Circuit, OpType
+ansatz = FermionSpaceAnsatzUCCSD(fock_space, hartree_fock_state, QubitMappingJordanWigner())
+print('ANSATZ REPORT:')
+print(ansatz.generate_report())
+print('\n 2-qubit GATES:  {}'.format(ansatz.circuit_resources()['gates_2q']))
+#print("\n ANSATZ GENERATION CIRCUIT:")
+#ansatz.state_circuit
+
+from pytket.extensions.qiskit import AerBackend
+from inquanto.minimizers import MinimizerScipy
+from qnexus import QuantinuumConfig
+
+from qnexus.client import projects
+
+# Below for local
+backend = AerBackend()
+# Below for h2-1sc
+#backend = QuantinuumConfig(device_name="H2-1SC")
+
+minimizer = MinimizerScipy(method="L-BFGS-B")
+
+# Below for h2-1sc
+#project_ref = projects.get_or_create(name="Testing1", description="", properties={})
+
+from inquanto.computables import ExpectationValue, ExpectationValueDerivative
+from inquanto.algorithms import AlgorithmVQE
+from inquanto.protocols import PauliAveraging
+
+
+initial_parameters = ansatz.state_symbols.construct_zeros()
+
+
+
+objective_expression = ExpectationValue(ansatz, qubit_hamiltonian)
+#print(objective_expression)
+
+# Gather symbols AFTER constructing initial parameters
+free_symbols = ansatz.free_symbols_ordered() 
+
+
+protocol_objective = PauliAveraging(backend, shots_per_circuit=4096)
+protocol_objective.build(initial_parameters, ansatz, qubit_hamiltonian)
+
+gradient = ExpectationValueDerivative(ansatz,qubit_hamiltonian,free_symbols)
+protocol_objective.compile_circuits(optimization_level=1)
+
+myvqe = AlgorithmVQE(
+    minimizer=minimizer, 
+    objective_expression=objective_expression, 
+    #gradient_expression=gradient,
+    initial_parameters=initial_parameters
+)
+
+# The algorithm object builds both protocols synchronously
+myvqe.build(protocol_objective=protocol_objective, protocol_gradient=gradient)
+
+# Run the calculation
+
+myvqe.run()
+print(myvqe.final_value)
+
+#print()
+#print(myvqe.final_parameters)
+
+#print(protocol_objective.dataframe_measurements())
+
+
